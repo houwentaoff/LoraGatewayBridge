@@ -3,11 +3,13 @@ package main
 //go:generate ./doc.sh
 
 import (
+	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
+	"github.com/brocaar/lora-gateway-bridge/backend/go-coap"
 	"github.com/brocaar/lora-gateway-bridge/backend/mqttpubsub"
 	"github.com/brocaar/lora-gateway-bridge/gateway"
 	"github.com/brocaar/lorawan"
@@ -61,9 +63,17 @@ func run(c *cli.Context) error {
 	}()
 
 	go func() {
+		var coappubsub *coap.Backend
 		for stats := range gw.StatsChan() {
-			if err := pubsub.PublishGatewayStats(stats.MAC, stats); err != nil {
-				log.Errorf("could not publish GatewayStatsPacket: %s", err)
+			if c.String("coap-server") == "" {
+				if err := pubsub.PublishGatewayStats(stats.MAC, stats); err != nil {
+					log.Errorf("could not publish GatewayStatsPacket: %s", err)
+				}
+			} else {
+				fmt.Println("string ", c.String("coap-server"))
+				if err := coappubsub.PublishGatewayStats(stats.MAC, stats); err != nil {
+					log.Errorf("could not publish GatewayStatsPacket: %s", err)
+				}
 			}
 		}
 	}()
@@ -86,7 +96,7 @@ func run(c *cli.Context) error {
 func main() {
 	app := cli.NewApp()
 	app.Name = "lora-gateway-bridge"
-	app.Usage = "abstracts the packet_forwarder protocol into JSON over MQTT"
+	app.Usage = "abstracts the packet_forwarder protocol into JSON over MQTT or COAP"
 	app.Copyright = "Joy Hou"
 	app.Version = version
 	app.Action = run
@@ -96,6 +106,12 @@ func main() {
 			Usage:  "ip:port to bind the UDP listener to",
 			Value:  "0.0.0.0:1700",
 			EnvVar: "UDP_BIND",
+		},
+		cli.StringFlag{
+			Name:   "coap-server",
+			Usage:  "coap server (e.g. scheme://host:port where scheme is udp)",
+			Value:  "udp://127.0.0.1:5683",
+			EnvVar: "COAP_SERVER",
 		},
 		cli.StringFlag{
 			Name:   "mqtt-server",
