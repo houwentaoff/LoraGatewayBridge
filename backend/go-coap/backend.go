@@ -107,10 +107,11 @@ func (b *Backend) SubscribeGatewayTX(mac lorawan.EUI64) error {
 	for b.conn != nil {
 		msg, err := b.conn.Receive()
 		if err != nil {
-			log.Fatalf("Error receiving: %v", err)
+			//log.Fatalf("Error receiving: %v", err)
+			continue
 		}
 		topic = msg.Path()[0]
-		log.WithField("topic", topic).Info("backend: recv topic")
+		log.WithField("topic", topic).Info("coap backend: recv topic")
 		fmt.Println("==>jot txpk:", string(msg.Payload), "\n")
 		var tx gateway.TXPK
 		if err := json.Unmarshal(msg.Payload, &tx); err != nil {

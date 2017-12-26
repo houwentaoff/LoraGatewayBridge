@@ -48,7 +48,11 @@ func run(c *cli.Context) error {
 
 		time.Sleep(2 * time.Second)
 	}
-	defer pubsub.Close()
+	defer func() {
+		if c.String("coap-server") == "" {
+			pubsub.Close()
+		}
+	}()
 
 	onNew := func(mac lorawan.EUI64) error {
 		if c.String("coap-server") == "" {
@@ -72,7 +76,7 @@ func run(c *cli.Context) error {
 	}
 	defer gw.Close()
 
-	if c.String("coap-server") == "" {
+	if c.String("coap-server") != "" {
 		go func() {
 			for {
 				coappubsub.SubscribeGatewayTX([8]byte{0x0, 0x0, 0x8, 0x0, 0x27, 0x00, 0x01, 0x97})
