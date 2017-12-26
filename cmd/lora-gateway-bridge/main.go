@@ -28,24 +28,42 @@ func run(c *cli.Context) error {
 	}).Info("starting LoRa Gateway Bridge")
 
 	var pubsub *mqttpubsub.Backend
+	var coappubsub *coap.Backend
 	for {
 		var err error
-		pubsub, err = mqttpubsub.NewBackend(c.String("mqtt-server"), c.String("mqtt-username"), c.String("mqtt-password"), c.String("mqtt-ca-cert"), c.String("mqtt-cli-ca-cert"), c.String("mqtt-cli-key"))
-		if err == nil {
-			break
+		//fmt.Println("coap-server:", c.String("coap-server"))
+		if c.String("coap-server") == "" {
+			pubsub, err = mqttpubsub.NewBackend(c.String("mqtt-server"), c.String("mqtt-username"), c.String("mqtt-password"), c.String("mqtt-ca-cert"), c.String("mqtt-cli-ca-cert"), c.String("mqtt-cli-key"))
+			if err == nil {
+				break
+			}
+			log.Errorf("could not setup mqtt backend, retry in 2 seconds: %s", err)
+		} else {
+			coappubsub, err = coap.NewBackend(c.String("coap-server"))
+			if err == nil {
+				break
+			}
+			log.Errorf("could not setup coap backend, retry in 2 seconds: %s", err)
 		}
 
-		log.Errorf("could not setup mqtt backend, retry in 2 seconds: %s", err)
 		time.Sleep(2 * time.Second)
 	}
 	defer pubsub.Close()
 
 	onNew := func(mac lorawan.EUI64) error {
-		return pubsub.SubscribeGatewayTX(mac)
+		if c.String("coap-server") == "" {
+			return pubsub.SubscribeGatewayTX(mac)
+		} else {
+			return nil
+		}
 	}
 
 	onDelete := func(mac lorawan.EUI64) error {
-		return pubsub.UnSubscribeGatewayTX(mac)
+		if c.String("coap-server") == "" {
+			return pubsub.UnSubscribeGatewayTX(mac)
+		} else {
+			return nil
+		}
 	}
 
 	gw, err := gateway.NewBackend(c.String("udp-bind"), onNew, onDelete, c.Bool("skip-crc-check"))
@@ -54,16 +72,30 @@ func run(c *cli.Context) error {
 	}
 	defer gw.Close()
 
+	if c.String("coap-server") == "" {
+		go func() {
+			for {
+				coappubsub.SubscribeGatewayTX([8]byte{0x0, 0x0, 0x8, 0x0, 0x27, 0x00, 0x01, 0x97})
+			}
+		}()
+	}
+
 	go func() {
 		for rxPacket := range gw.RXPacketChan() {
-			if err := pubsub.PublishGatewayRX(rxPacket.RXInfo.MAC, rxPacket); err != nil {
-				log.Errorf("could not publish RXPacket: %s", err)
+			if c.String("coap-server") == "" {
+				if err := pubsub.PublishGatewayRX(rxPacket.RXInfo.MAC, rxPacket); err != nil {
+					log.Errorf("could not publish RXPacket: %s", err)
+				}
+			} else {
+				fmt.Println("string ", c.String("coap-server"))
+				if err := coappubsub.PublishGatewayRX(rxPacket.RXInfo.MAC, rxPacket); err != nil {
+					log.Errorf("could not publish RXPacket: %s", err)
+				}
 			}
 		}
 	}()
 
 	go func() {
-		var coappubsub *coap.Backend
 		for stats := range gw.StatsChan() {
 			if c.String("coap-server") == "" {
 				if err := pubsub.PublishGatewayStats(stats.MAC, stats); err != nil {
@@ -79,11 +111,21 @@ func run(c *cli.Context) error {
 	}()
 
 	go func() {
-		for txPacket := range pubsub.TXPacketChan() {
-			if err := gw.Send(txPacket); err != nil {
-				log.Errorf("could not send TXPacket: %s", err)
+
+		if c.String("coap-server") == "" {
+			for txPacket := range pubsub.TXPacketChan() {
+				if err := gw.Send(txPacket); err != nil {
+					log.Errorf("could not send TXPacket: %s", err)
+				}
+			}
+		} else {
+			for txPacket := range coappubsub.TXPacketChan() {
+				if err := gw.SendTXPK(txPacket, [8]byte{0x0, 0x0, 0x8, 0x0, 0x27, 0x00, 0x01, 0x97}); err != nil {
+					log.Errorf("could not send TXPacket: %s", err)
+				}
 			}
 		}
+
 	}()
 
 	sigChan := make(chan os.Signal)
@@ -109,8 +151,8 @@ func main() {
 		},
 		cli.StringFlag{
 			Name:   "coap-server",
-			Usage:  "coap server (e.g. scheme://host:port where scheme is udp)",
-			Value:  "udp://127.0.0.1:5683",
+			Usage:  "coap server (e.g. scheme://host:port where scheme is udp (udp://127.0.0.1:5683))",
+			Value:  "", //"udp://127.0.0.1:5683",
 			EnvVar: "COAP_SERVER",
 		},
 		cli.StringFlag{

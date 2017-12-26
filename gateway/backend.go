@@ -168,6 +168,29 @@ func (b *Backend) StatsChan() chan gw.GatewayStatsPacket {
 	return b.statsChan
 }
 
+// Send proxy:sends the given packet to the gateway.
+func (b *Backend) SendTXPK(txpk TXPK, mac lorawan.EUI64) error {
+	gw, err := b.gateways.get(mac)
+	if err != nil {
+		return err
+	}
+	pullResp := PullRespPacket{
+		ProtocolVersion: gw.protocolVersion,
+		Payload: PullRespPayload{
+			TXPK: txpk,
+		},
+	}
+	bytes, err := pullResp.MarshalBinary()
+	if err != nil {
+		return fmt.Errorf("gateway: json marshall PullRespPacket error: %s", err)
+	}
+	b.udpSendChan <- udpPacket{
+		data: bytes,
+		addr: gw.addr,
+	}
+	return nil
+}
+
 // Send sends the given packet to the gateway.
 func (b *Backend) Send(txPacket gw.TXPacketBytes) error {
 	gw, err := b.gateways.get(txPacket.TXInfo.MAC)
