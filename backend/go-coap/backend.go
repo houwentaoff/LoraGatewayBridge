@@ -168,7 +168,7 @@ func (b *Backend) publish(topic string, v interface{}) error {
 	//}
 	rv, err := b.conn.Send(req)
 	if err != nil {
-		log.Fatalf("Error sending req: %v", err)
+		log.Errorf("Error sending req: %v", err)
 	}
 	if rv != nil {
 		log.Printf("Response payload: %s", rv.Payload)

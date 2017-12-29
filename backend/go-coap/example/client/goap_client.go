@@ -1,10 +1,11 @@
 package main
 
 import (
-	"log"
+	//"log"
 	"os"
 
 	"github.com/dustin/go-coap"
+	log "github.com/sirupsen/logrus"
 )
 
 func main() {
@@ -27,12 +28,12 @@ func main() {
 
 	c, err := coap.Dial("udp", "localhost:5683")
 	if err != nil {
-		log.Fatalf("Error dialing: %v", err)
+		log.Errorf("Error dialing: %v", err)
 	}
 
 	rv, err := c.Send(req)
 	if err != nil {
-		log.Fatalf("Error sending request: %v", err)
+		log.Errorf("Error sending request: %v", err)
 	}
 
 	if rv != nil {
