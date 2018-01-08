@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -33,6 +34,11 @@ func danx() {
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
 	fmt.Println(string(body))
+	resp, err = client.Post("https://bwcpn:8082", "application/json", nil)
+	if err != nil {
+		fmt.Println("error:", err)
+		return
+	}
 }
 
 //忽略服务器的ca验证
@@ -50,6 +56,12 @@ func noYanz() {
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
 	fmt.Println(string(body))
+	resp, err = client.Post("https://bwcpn:8082/topic", "application/json", strings.NewReader("{aa:1}"))
+	if err != nil {
+		fmt.Println("error:", err)
+		return
+	}
+	fmt.Println("post over!")
 }
 
 //双向验证
