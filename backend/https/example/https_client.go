@@ -34,11 +34,12 @@ func danx() {
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
 	fmt.Println(string(body))
-	resp, err = client.Post("https://bwcpn:8082", "application/json", nil)
+	resp, err = client.Post("https://bwcpn:8082/topic/aa2233/ccc", "application/json", strings.NewReader("{a:1}"))
 	if err != nil {
 		fmt.Println("error:", err)
 		return
 	}
+	fmt.Println("post over!")
 }
 
 //忽略服务器的ca验证
@@ -107,8 +108,8 @@ func shuangx() {
 */
 func main() {
 	go danx()
-	go shuangx()
-	go noYanz()
+	//go shuangx()
+	//go noYanz()
 	for {
 		time.Sleep(time.Second)
 	}

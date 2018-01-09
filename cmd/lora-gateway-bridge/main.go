@@ -63,7 +63,7 @@ func run(c *cli.Context) error {
 		time.Sleep(2 * time.Second)
 	}
 	defer func() {
-		if c.String("coap-server") == "" {
+		if c.String("mqtt-server") != "" {
 			pubsub.Close()
 		}
 	}()
