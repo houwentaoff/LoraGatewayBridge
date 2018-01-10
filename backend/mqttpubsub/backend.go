@@ -226,6 +226,7 @@ func (b *Backend) publish(topic string, v interface{}) error {
 	log.WithField("topic", topic).Info("backend: publishing packet")
 	str := string(bytes)
 	fmt.Println("==>joy:", str, "\n")
+	log.Debugln("connect stat:", b.conn.IsConnected())
 	if token := b.conn.Publish(topic, 0, false, bytes); token.Wait() && token.Error() != nil {
 		return token.Error()
 	}

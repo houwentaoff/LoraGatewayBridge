@@ -319,12 +319,12 @@ func (c *client) reconnect() {
 				break
 			} else {
 				ERROR.Println(CLI, err.Error())
-				WARN.Println(CLI, "failed to connect to broker, trying next")
+				WARN.Errorln(CLI, "failed to connect to broker, trying next")
 				rc = packets.ErrNetworkError
 			}
 		}
 		if rc != 0 {
-			DEBUG.Println(CLI, "Reconnect failed, sleeping for", int(sleep.Seconds()), "seconds")
+			ERROR.Errorln(CLI, "Reconnect failed, sleeping for", int(sleep.Seconds()), "seconds")
 			time.Sleep(sleep)
 			if sleep < c.options.MaxReconnectInterval {
 				sleep *= 2
