@@ -34,34 +34,59 @@ func run(c *cli.Context) error {
 	log.Debugln("coap-server:", c.String("coap-server"))
 	log.Debugln("mqtt-server:", c.String("mqtt-server"))
 	log.Debugln("https-server:", c.String("https-server"))
-	for {
-		var err error
-		//fmt.Println("coap-server:", c.String("coap-server"))
-		if c.String("mqtt-server") != "" {
-			pubsub, err = mqttpubsub.NewBackend(c.String("mqtt-server"), c.String("mqtt-username"), c.String("mqtt-password"), c.String("ca-cert"), c.String("cli-ca-cert"), c.String("cli-key"))
-			if err == nil {
-				break
+	func() {
+		for {
+			var err error
+			switch {
+			case c.String("mqtt-server") != "":
+				pubsub, err = mqttpubsub.NewBackend(c.String("mqtt-server"), c.String("mqtt-username"), c.String("mqtt-password"), c.String("ca-cert"), c.String("cli-ca-cert"), c.String("cli-key"))
+				if err == nil {
+					return
+				}
+				log.Errorf("could not setup mqtt backend, retry in 2 seconds: %s", err)
+			case c.String("coap-server") != "":
+				coappubsub, err = coap.NewBackend(c.String("coap-server"))
+				if err == nil {
+					return
+				}
+				log.Errorf("could not setup coap backend, retry in 2 seconds: %s", err)
+			case c.String("https-server") != "":
+				if c.String("ca-cert") == "" {
+					log.Errorln("please input server ca file!")
+				}
+				httpspubsub, err = https.NewBackend(c.String("https-server"), c.String("ca-cert"), c.String("cli-ca-cert"), c.String("cli-key"))
+				if err == nil {
+					return
+				}
+				log.Errorf("could not setup https backend, retry in 2 seconds: %s", err)
 			}
-			log.Errorf("could not setup mqtt backend, retry in 2 seconds: %s", err)
-		} else if c.String("coap-server") != "" {
-			coappubsub, err = coap.NewBackend(c.String("coap-server"))
-			if err == nil {
-				break
-			}
-			log.Errorf("could not setup coap backend, retry in 2 seconds: %s", err)
-		} else if c.String("https-server") != "" {
-			if c.String("ca-cert") == "" {
-				log.Errorln("pease input server ca file!")
-			}
-			httpspubsub, err = https.NewBackend(c.String("https-server"), c.String("ca-cert"), c.String("cli-ca-cert"), c.String("cli-key"))
-			if err == nil {
-				break
-			}
-			log.Errorf("could not setup https backend, retry in 2 seconds: %s", err)
+			/*
+				if c.String("mqtt-server") != "" {
+					pubsub, err = mqttpubsub.NewBackend(c.String("mqtt-server"), c.String("mqtt-username"), c.String("mqtt-password"), c.String("ca-cert"), c.String("cli-ca-cert"), c.String("cli-key"))
+					if err == nil {
+						break
+					}
+					log.Errorf("could not setup mqtt backend, retry in 2 seconds: %s", err)
+				} else if c.String("coap-server") != "" {
+					coappubsub, err = coap.NewBackend(c.String("coap-server"))
+					if err == nil {
+						break
+					}
+					log.Errorf("could not setup coap backend, retry in 2 seconds: %s", err)
+				} else if c.String("https-server") != "" {
+					if c.String("ca-cert") == "" {
+						log.Errorln("pease input server ca file!")
+					}
+					httpspubsub, err = https.NewBackend(c.String("https-server"), c.String("ca-cert"), c.String("cli-ca-cert"), c.String("cli-key"))
+					if err == nil {
+						break
+					}
+					log.Errorf("could not setup https backend, retry in 2 seconds: %s", err)
+				}
+			*/
+			time.Sleep(2 * time.Second)
 		}
-
-		time.Sleep(2 * time.Second)
-	}
+	}()
 	defer func() {
 		if c.String("mqtt-server") != "" {
 			pubsub.Close()
