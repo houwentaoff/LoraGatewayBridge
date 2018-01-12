@@ -163,12 +163,12 @@ type rxP struct {
 	RX rxPacketBytes `json:"rxpk"`
 }
 type rxPacketBytes struct {
-	Time      gateway.ExpandedTime `json:"time,omitempty"` // receive time
-	Timestamp uint32               `json:"tmst"`           // gateway internal receive timestamp with microsecond precision, will rollover every ~ 72 minutes
-	Channel   int                  `json:"chan"`           // concentrator IF channel used for RX
-	RFChain   int                  `json:"rfch"`           // RF chain used for RX
-	Frequency float64              `json:"freq"`           // frequency in Hz
-	CRCStatus int                  `json:"stat"`           // 1 = OK, -1 = fail, 0 = no CRC
+	Time      *gateway.ExpandedTime `json:"time,omitempty"` // receive time
+	Timestamp uint32                `json:"tmst"`           // gateway internal receive timestamp with microsecond precision, will rollover every ~ 72 minutes
+	Channel   int                   `json:"chan"`           // concentrator IF channel used for RX
+	RFChain   int                   `json:"rfch"`           // RF chain used for RX
+	Frequency float64               `json:"freq"`           // frequency in Hz
+	CRCStatus int                   `json:"stat"`           // 1 = OK, -1 = fail, 0 = no CRC
 
 	Modulation band.Modulation `json:"modu"`
 	DateRate   string          `json:"datr"`
@@ -180,8 +180,17 @@ type rxPacketBytes struct {
 }
 
 func NewrxPacketBytes(mac lorawan.EUI64, rx gw.RXPacketBytes) *rxPacketBytes {
+	//log.Printf("joy:time [%v]\n", rx.RXInfo.Time)
 	v := new(rxPacketBytes)
-	v.Time = gateway.ExpandedTime(rx.RXInfo.Time)
+
+	if rx.RXInfo.Time.IsZero() {
+		v.Time = nil
+	} else {
+		tt := gateway.ExpandedTime(rx.RXInfo.Time)
+
+		v.Time = &tt //rx.RXInfo.Time //gateway.ExpandedTime(rx.RXInfo.Time)
+	}
+
 	v.Timestamp = rx.RXInfo.Timestamp
 	v.Channel = rx.RXInfo.Channel
 	v.RFChain = rx.RXInfo.RFChain
